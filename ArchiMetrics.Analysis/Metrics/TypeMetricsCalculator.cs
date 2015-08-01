@@ -47,6 +47,7 @@ namespace ArchiMetrics.Analysis.Metrics
 			var depthOfInheritance = CalculateDepthOfInheritance(type);
 			var cyclomaticComplexity = memberMetrics.Sum(x => x.CyclomaticComplexity);
 			var linesOfCode = memberMetrics.Sum(x => x.LinesOfCode);
+			var sourceLinesOfCode = CalculateSourceLinesOfCode(type);
 			var maintainabilityIndex = CalculateAveMaintainabilityIndex(memberMetrics);
 			var afferentCoupling = await CalculateAfferentCoupling(type);
 			var efferentCoupling = GetEfferentCoupling(type, symbol);
@@ -58,6 +59,7 @@ namespace ArchiMetrics.Analysis.Metrics
 				modifier,
 				memberMetrics,
 				linesOfCode,
+				sourceLinesOfCode,
 				cyclomaticComplexity,
 				maintainabilityIndex,
 				depthOfInheritance,
@@ -94,6 +96,11 @@ namespace ArchiMetrics.Analysis.Metrics
 				default:
 					return TypeMetricKind.Unknown;
 			}
+		}
+
+		private int CalculateSourceLinesOfCode(TypeDeclarationSyntax type)
+		{
+			return type.GetText().Lines.Count;
 		}
 
 		private int GetEfferentCoupling(SyntaxNode classDeclaration, ISymbol sourceSymbol)

@@ -22,11 +22,22 @@ namespace ArchiMetrics.Common.Tests
 		[Test]
 		public async Task WhenLoadingSolutionThenHasProjects()
 		{
+#if NCRUNCH
+            var directoryName = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(GetOriginalProjectPath()), "bin", "Debug");
+            System.IO.Directory.SetCurrentDirectory(directoryName); 
+#endif
 			var path = @"..\..\..\archimetrics.sln".GetLowerCaseFullPath();
 			var workspace = MSBuildWorkspace.Create();
 			var solution = await workspace.OpenSolutionAsync(path);
 
 			Assert.True(solution.Projects.Any());
 		}
+
+#if NCRUNCH
+        public static string GetOriginalProjectPath()
+        {
+            return System.Environment.GetEnvironmentVariable("NCrunch.OriginalProjectPath");
+        } 
+#endif
 	}
 }

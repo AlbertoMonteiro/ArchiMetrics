@@ -35,7 +35,7 @@ namespace ArchiMetrics.Analysis.Tests.Metrics
 			[SetUp]
 			public void Setup()
 			{
-				_analyzer = new CodeMetricsCalculator();
+                _analyzer = new CodeMetricsCalculator(null);
 			}
 
 			[Test]
@@ -239,6 +239,87 @@ using System.Linq;
 				Assert.AreEqual(loc, metrics.First().LinesOfCode);
 			}
 
+			[TestCase(@"namespace Testing
+			{
+				using System;
+using System.Linq;
+			}", 3)]
+			[TestCase(@"namespace Testing
+			{
+				public class TestClass {
+					public void SomeMethod() {
+						const string x = ""blah"";
+					}
+				}
+			}", 8)]
+			[TestCase(@"namespace Testing
+			{
+				public class TestClass {
+					public void SomeMethod() {
+						{}
+					}
+				}
+			}", 8)]
+			[TestCase(@"namespace Testing
+			{
+				public class TestClass {
+					public void SomeMethod() {
+						var x = a + b;
+					}
+				}
+			}", 8)]
+			[TestCase(@"namespace Testing
+			{
+				public class TestClass {
+					public void SomeMethod() {
+						foreach(var a in x){}
+					}
+				}
+			}", 8)]
+			[TestCase(@"namespace Testing
+			{
+				public class TestClass {
+					public TestClass()
+			: base(SyntaxWalkerDepth.Node)
+		{
+		}
+
+				}
+			}", 10)]
+			[TestCase(@"namespace Testing
+			{
+				public class TestClass {
+					public TestClass()
+		{
+		}
+
+				}
+			}", 9)]
+			[TestCase(@"namespace Testing
+			{
+				public class TestClass {
+					public void SomeMethod(SyntaxNode node)
+					{
+						base.VisitBinaryExpression(node);
+						switch (node.Kind)
+						{
+							case SyntaxKind.LogicalNotExpression:
+								_counter++;
+								break;
+							case SyntaxKind.ExclusiveOrExpression:
+								break;
+						}
+					}
+				}
+			}", 17)]
+			public async Task CodeHasExpectedSourceLinesOfCode(string code, int loc)
+			{
+				var project = CreateProject(code);
+				var metrics = await _analyzer.Calculate(project, null);
+
+				Assert.AreEqual(loc, metrics.First().SourceLinesOfCode);
+			}
+
 			private Project CreateProject(string text)
 			{
 				var workspace = new AdhocWorkspace();
@@ -286,7 +367,7 @@ using System.Linq;
 			[SetUp]
 			public void Setup()
 			{
-				_analyzer = new CodeMetricsCalculator(new TypeDocumentationFactory(), new MemberDocumentationFactory());
+				_analyzer = new CodeMetricsCalculator(new TypeDocumentationFactory(), new MemberDocumentationFactory(), null);
 			}
 
 			[Test]

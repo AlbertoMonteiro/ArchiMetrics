@@ -21,14 +21,14 @@ namespace ArchiMetrics.Common.Metrics
 	/// </summary>
 	public interface ICodeMetricsCalculator
 	{
-		/// <summary>
+        /// <summary>
 		/// Creates a <see cref="Task{TResult}"/> which will return the metrics for the namespaces in the defined project.
 		/// </summary>
 		/// <param name="project">The <see cref="Project"/> to calculate metrics for.</param>
 		/// <param name="solution">The <see cref="Solution"/> the project is contained in.</param>
 		/// <remarks>If the <paramref name="solution"/> argument is <code>null</code>, then the project metrics are calculated for a standalone project. This may affect metrics such as afferent and efferent coupling.</remarks>
 		/// <returns>A <see cref="Task{TResult}"/> providing an <see cref="IEnumerable{T}"/> of <see cref="INamespaceMetric"/> instances.</returns>
-		Task<IEnumerable<INamespaceMetric>> Calculate(Project project, Solution solution);
+        Task<IEnumerable<INamespaceMetric>> Calculate(Project project, Solution solution);
 
 		/// <summary>
 		/// Creates a <see cref="Task{TResult}"/> which will return the metrics for the defined <see cref="SyntaxTree"/>.

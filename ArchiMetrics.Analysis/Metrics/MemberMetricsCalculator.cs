@@ -10,6 +10,8 @@
 // </summary>
 // --------------------------------------------------------------------------------------------------------------------
 
+using System.CodeDom;
+
 namespace ArchiMetrics.Analysis.Metrics
 {
 	using System;
@@ -109,6 +111,7 @@ namespace ArchiMetrics.Analysis.Metrics
 			var source = CalculateClassCoupling(syntaxNode);
 			var complexity = CalculateCyclomaticComplexity(syntaxNode);
 			var linesOfCode = CalculateLinesOfCode(syntaxNode);
+			var sourceLinesOfCode = CalculateSourceLinesOfCode(syntaxNode);
 			var numberOfParameters = CalculateNumberOfParameters(syntaxNode);
 			var numberOfLocalVariables = CalculateNumberOfLocalVariables(syntaxNode);
 			var maintainabilityIndex = CalculateMaintainablityIndex(complexity, linesOfCode, halsteadMetrics);
@@ -131,6 +134,7 @@ namespace ArchiMetrics.Analysis.Metrics
 				halsteadMetrics,
 				lineNumber,
 				linesOfCode,
+				sourceLinesOfCode,
 				maintainabilityIndex,
 				complexity,
 				memberName,
@@ -141,6 +145,13 @@ namespace ArchiMetrics.Analysis.Metrics
 				documentation);
 		}
 
+		private int CalculateSourceLinesOfCode(SyntaxNode syntaxNode)
+		{
+			var count = syntaxNode.DescendantTrivia().Count(x => x.IsKind(SyntaxKind.MultiLineCommentTrivia) || x.IsKind(SyntaxKind.SingleLineCommentTrivia));
+
+			return syntaxNode.GetText().Lines.Count - count;
+		}
+
 		private IMemberMetric CalculateMemberMetricSlim(SyntaxNode syntaxNode)
 		{
 			var analyzer = new HalsteadAnalyzer();
@@ -148,6 +159,7 @@ namespace ArchiMetrics.Analysis.Metrics
 			var memberName = _nameResolver.TryResolveMemberSignatureString(syntaxNode);
 			var complexity = CalculateCyclomaticComplexity(syntaxNode);
 			var linesOfCode = CalculateLinesOfCode(syntaxNode);
+			var sourceLinesOfCode = CalculateSourceLinesOfCode(syntaxNode);
 			var maintainabilityIndex = CalculateMaintainablityIndex(complexity, linesOfCode, halsteadMetrics);
 			var location = syntaxNode.GetLocation();
 			var lineNumber = location.GetLineSpan().StartLinePosition.Line;
@@ -159,6 +171,7 @@ namespace ArchiMetrics.Analysis.Metrics
 				halsteadMetrics,
 				lineNumber,
 				linesOfCode,
+				sourceLinesOfCode,
 				maintainabilityIndex,
 				complexity,
 				memberName,

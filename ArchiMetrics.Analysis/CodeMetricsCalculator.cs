@@ -26,23 +26,26 @@ namespace ArchiMetrics.Analysis
 
     public class CodeMetricsCalculator : ICodeMetricsCalculator
     {
+        private readonly CalculationConfiguration calculationConfiguration;
+
         private static readonly List<Regex> Patterns = new List<Regex>
-                                                       {
-                                                           new Regex(@".*\.g\.cs$", RegexOptions.Compiled),
-                                                           new Regex(@".*\.g\.i\.cs$", RegexOptions.Compiled),
-                                                           new Regex(@".*\.designer\.cs$", RegexOptions.Compiled)
-                                                       };
+													   {
+														   new Regex(@".*\.g\.cs$", RegexOptions.Compiled), 
+														   new Regex(@".*\.g\.i\.cs$", RegexOptions.Compiled), 
+														   new Regex(@".*\.designer\.cs$", RegexOptions.Compiled)
+													   };
 
 		private readonly IAsyncFactory<ISymbol, ITypeDocumentation> _typeDocumentationFactory;
 		private readonly IAsyncFactory<ISymbol, IMemberDocumentation> _memberDocumentationFactory;
         private readonly SyntaxCollector _syntaxCollector = new SyntaxCollector();
 
-        public CodeMetricsCalculator()
-            : this(new TypeDocumentationFactory(), new MemberDocumentationFactory())
+        public CodeMetricsCalculator(CalculationConfiguration calculationConfiguration)
+            : this(new TypeDocumentationFactory(), new MemberDocumentationFactory(), calculationConfiguration)
         {
+            this.calculationConfiguration = calculationConfiguration ?? new CalculationConfiguration();
         }
 
-        public CodeMetricsCalculator(IAsyncFactory<ISymbol, ITypeDocumentation> typeDocumentationFactory, IAsyncFactory<ISymbol, IMemberDocumentation> memberDocumentationFactory)
+        public CodeMetricsCalculator(IAsyncFactory<ISymbol, ITypeDocumentation> typeDocumentationFactory, IAsyncFactory<ISymbol, IMemberDocumentation> memberDocumentationFactory, CalculationConfiguration calculationConfiguration)
         {
             _typeDocumentationFactory = typeDocumentationFactory;
             _memberDocumentationFactory = memberDocumentationFactory;
@@ -69,13 +72,13 @@ namespace ArchiMetrics.Analysis
             var members = declarations.MemberDeclarations.Concat(statementMembers).AsArray();
             var anonClass = members.Any()
                                 ? new[]
-                                  {
-                                      SyntaxFactory.ClassDeclaration(
-                                          "UnnamedClass")
-                                          .WithModifiers(
-                                              SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword)))
-                                          .WithMembers(SyntaxFactory.List(members))
-                                  }
+								  {
+									  SyntaxFactory.ClassDeclaration(
+										  "UnnamedClass")
+										  .WithModifiers(
+											  SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword)))
+										  .WithMembers(SyntaxFactory.List(members))
+								  }
                                 : new TypeDeclarationSyntax[0];
             var array = declarations.TypeDeclarations
                 .Concat(anonClass)
@@ -83,10 +86,10 @@ namespace ArchiMetrics.Analysis
                 .AsArray();
             var anonNs = array.Any()
                 ? new[]
-                          {
-                              SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName("Unnamed"))
-                                  .WithMembers(SyntaxFactory.List(array))
-                          }
+						  {
+							  SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName("Unnamed"))
+								  .WithMembers(SyntaxFactory.List(array))
+						  }
                 : new NamespaceDeclarationSyntax[0];
             var namespaceDeclarations = declarations
                 .NamespaceDeclarations
@@ -217,38 +220,38 @@ namespace ArchiMetrics.Analysis
             return new Tuple<Compilation, SemanticModel, SyntaxTree, NamespaceDeclarationSyntaxInfo>(compilation, semanticModel, tree, namespaceNode);
         }
 
-        private static async Task<IEnumerable<NamespaceDeclaration>> GetNamespaceDeclarations(Project project)
+		private async Task<IEnumerable<NamespaceDeclaration>> GetNamespaceDeclarations(Project project)
         {
             var namespaceDeclarationTasks = project.Documents
                 .Select(document => new { document, codeFile = document.FilePath })
                 .Where(t => !IsGeneratedCodeFile(t.document, Patterns))
-                .Select(
-                    async t =>
+                .Select(async t =>
+                {
+                    var collector = new NamespaceCollector();
+                    var root = await t.document.GetSyntaxRootAsync().ConfigureAwait(false);
+						return new
+							   {
+								   t.codeFile,
+								   namespaces = collector.GetNamespaces(root)
+							   };
+					})
+				.Select(
+					async t =>
+					{
+						var result = await t.ConfigureAwait(false);
+						return result.namespaces
+							.Select(
+								x => new NamespaceDeclarationSyntaxInfo
                     {
-                        var collector = new NamespaceCollector();
-                        var root = await t.document.GetSyntaxRootAsync().ConfigureAwait(false);
-                        return new
-                        {
-                            t.codeFile,
-                            namespaces = collector.GetNamespaces(root)
-                        };
-                    })
-                .Select(
-                    async t =>
-                    {
-                        var result = await t.ConfigureAwait(false);
-                        return result.namespaces
-                            .Select(
-                                x => new NamespaceDeclarationSyntaxInfo
-                                {
-                                    Name = x.GetName(x.SyntaxTree.GetRoot()),
-                                    CodeFile = result.codeFile,
-                                    Syntax = x
-                                });
+                        Name = x.GetName(x.SyntaxTree.GetRoot()),
+										 CodeFile = result.codeFile,
+                        Syntax = x
                     });
+                });
             var namespaceDeclarations = await Task.WhenAll(namespaceDeclarationTasks).ConfigureAwait(false);
             return namespaceDeclarations
                 .SelectMany(x => x)
+                .Where(x => !calculationConfiguration.NamespacesIgnored.Contains(x.Name))
                 .GroupBy(x => x.Name)
                 .Select(y => new NamespaceDeclaration { Name = y.Key, SyntaxNodes = y });
         }
@@ -273,7 +276,7 @@ namespace ArchiMetrics.Analysis
                 .GroupBy(x => x.Name)
                 .Select(x => new TypeDeclaration { Name = x.Key, SyntaxNodes = x });
         }
-        
+
         private async Task<IEnumerable<INamespaceMetric>> CalculateNamespaceMetrics(IEnumerable<NamespaceDeclaration> namespaceDeclarations, Compilation compilation, Solution solution)
         {
             var tasks = namespaceDeclarations.Select(
@@ -338,7 +341,9 @@ namespace ArchiMetrics.Analysis
                 .AsArray();
 
             var typeMetrics = await Task.WhenAll(typeMetricsTasks).ConfigureAwait(false);
-            var array = typeMetrics.Where(x => x != null).AsArray();
+            var array = typeMetrics.Where(x => x != null)
+                .Where(x => !calculationConfiguration.TypesIgnored.Contains(namespaceNodes.Name + "." + x.Name))
+                .AsArray();
             return new Tuple<Compilation, IEnumerable<ITypeMetric>>(comp, array);
         }
     }

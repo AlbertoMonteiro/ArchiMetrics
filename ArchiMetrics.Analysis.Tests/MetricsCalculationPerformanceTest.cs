@@ -23,15 +23,27 @@ namespace ArchiMetrics.Analysis.Tests
 	using Microsoft.CodeAnalysis.MSBuild;
 	using NUnit.Framework;
 
+
 	public class MetricsCalculationPerformanceTest
 	{
 		private ProjectMetricsCalculator _calculator;
 
-		[SetUp]
-		public void Setup()
-		{
-			_calculator = new ProjectMetricsCalculator(new CodeMetricsCalculator(new TypeDocumentationFactory(), new MemberDocumentationFactory()));
-		}
+	    [SetUp]
+	    public void Setup()
+	    {
+	        _calculator = new ProjectMetricsCalculator(new CodeMetricsCalculator(null));
+#if NCRUNCH
+            var directoryName = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(GetOriginalProjectPath()), "bin", "Debug");
+            System.IO.Directory.SetCurrentDirectory(directoryName); 
+#endif
+	    }
+
+#if NCRUNCH
+        public static string GetOriginalProjectPath()
+        {
+            return Environment.GetEnvironmentVariable("NCrunch.OriginalProjectPath");
+        } 
+#endif
 
 		[Test]
 		public async Task MeasureSolutionAnalysisPerformance()

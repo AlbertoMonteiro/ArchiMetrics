@@ -1,14 +1,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{F11E08F5-C15B-4223-840B-86997220FB8E}"
-	ProjectSection(SolutionItems) = preProject
-		.nuget\NuGet.Config = .nuget\NuGet.Config
-		.nuget\NuGet.exe = .nuget\NuGet.exe
-		.nuget\NuGet.targets = .nuget\NuGet.targets
-	EndProjectSection
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArchiMetrics.Analysis.Tests", "ArchiMetrics.Analysis.Tests\ArchiMetrics.Analysis.Tests.csproj", "{36BA2848-F241-4CAA-B037-451251A75951}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArchiMetrics.CodeReview.Rules", "ArchiMetrics.CodeReview.Rules\ArchiMetrics.CodeReview.Rules.csproj", "{5C12DFB6-05DC-4941-B69F-B99903E89B1D}"
